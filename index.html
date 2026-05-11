@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Cake Puzzle</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    --stage-width: 60vw;
+    --girl-left: 50%; --girl-bottom: 10%; --girl-height: 55%;
+    --couple-left: 50%; --couple-bottom: 6%; --couple-height: 56%;
+    --girl-hot-left: 38%; --girl-hot-bottom: 10%; --girl-hot-width: 24%; --girl-hot-height: 38%;
+    --table-left: 50%; --table-bottom: 4%; --table-width: 40%; --table-aspect: 7/4;
+    --body-left: 6%; --body-bottom: 8%; --body-width: 30%; --body-height: 16%;
+    --cigar-left: 14%; --cigar-bottom: 6%; --cigar-width: 6%;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; color: #eee; font-family: system-ui, sans-serif; user-select: none; overflow: hidden; }
+  #app { position: relative; height: 100vh; width: 100vw; display: flex; align-items: stretch; justify-content: center; }
+  #scene-wrap { position: relative; height: 100vh; width: var(--stage-width); max-width: 100vw; overflow: hidden; background: #111; box-shadow: 0 0 40px rgba(0,0,0,.8); }
+  #scene { position: absolute; inset: 0; }
+  #scene img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .vignette { pointer-events: none; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.55) 100%); }
+
+  #girl { position: absolute; left: var(--girl-left); bottom: var(--girl-bottom); transform: translateX(-50%); height: var(--girl-height); z-index: 2; pointer-events: none; filter: drop-shadow(0 18px 14px rgba(0,0,0,.55)); }
+  #couple { position: absolute; left: var(--couple-left); bottom: var(--couple-bottom); transform: translateX(-50%); height: var(--couple-height); z-index: 2; pointer-events: none; display: none; filter: drop-shadow(0 18px 14px rgba(0,0,0,.55)); }
+  #girl-hot { position: absolute; left: var(--girl-hot-left); bottom: var(--girl-hot-bottom); width: var(--girl-hot-width); height: var(--girl-hot-height); background: transparent; border: 0; cursor: pointer; z-index: 3; }
+
+  #table { position: absolute; left: var(--table-left); bottom: var(--table-bottom); transform: translateX(-50%); width: var(--table-width); aspect-ratio: var(--table-aspect); z-index: 4; cursor: pointer; filter: drop-shadow(0 16px 12px rgba(0,0,0,.5)); }
+  #table-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: bottom; display: block; }
+
+  #body-hot { position: absolute; left: var(--body-left); bottom: var(--body-bottom); width: var(--body-width); height: var(--body-height); background: transparent; border: 0; cursor: pointer; z-index: 3; }
+  #cigar-room { position: absolute; left: var(--cigar-left); bottom: var(--cigar-bottom); width: var(--cigar-width); z-index: 3; cursor: pointer; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+
+  .hotspot { position: absolute; cursor: pointer; background: transparent; border: 0; }
+  #clock-hot  { top: 27%; left: 50%; transform: translateX(-50%); width: 9%; aspect-ratio: 1; border-radius: 50%; }
+  #fridge-hot { top: 38%; right: 9%; width: 17%; height: 50%; }
+  #cake-on-table-hot { position: absolute; top: 8%; left: 32%; width: 36%; height: 30%; cursor: pointer; background: transparent; border: 0; display: none; z-index: 5; }
+
+  .overlay { position: absolute; inset: 0; z-index: 30; display: none; }
+  .overlay.active { display: block; }
+  #overlay-clock, #overlay-note { background: rgba(0,0,0,.85); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; flex-direction: column; }
+  #overlay-clock.active, #overlay-note.active { display: flex; }
+
+  #digital-readout { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); font: 700 2.5rem ui-monospace, monospace; color: #fde9c2; background: rgba(0,0,0,.6); padding: 6px 18px; border-radius: 6px; border: 1px solid #444; }
+  #clock-stage { position: relative; width: min(70vh, 70vw); aspect-ratio: 1; container-type: size; }
+  #clock-face { width: 100%; height: 100%; display: block; filter: drop-shadow(0 20px 40px rgba(0,0,0,.6)); border-radius: 50%; }
+  .hand-wrap { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; will-change: transform; }
+  .hand-wrap img { position: absolute; top: 0; left: 0; pointer-events: auto; cursor: grab; user-select: none; -webkit-user-drag: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  #hour-wrap img  { height: 30cqh; transform: translate(-50%, -88%); }
+  #minute-wrap img { height: 42cqh; transform: translate(-50%, -92%); }
+  #hour-wrap   { z-index: 2; }
+  #minute-wrap { z-index: 3; }
+  
+  #close-clock, #close-fridge, #close-cake, #close-note { position: absolute; top: 24px; right: 24px; z-index: 40; padding: 6px 14px; background: #292524; color: #eee; border: 1px solid #555; border-radius: 4px; cursor: pointer; }
+
+  #overlay-fridge, #overlay-cake { background: #000; }
+  #overlay-fridge img.fridge-img, #overlay-cake img.cake-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+  #fridge-cake-hot   { top: 40%; left: 46%; width: 18%; height: 16%; display: none; }
+  #fridge-shelf-hot  { top: 38%; left: 42%; width: 28%; height: 22%; display: none; }
+  #fridge-plug-hot   { top: 68%; right: 2%; width: 12%; height: 20%; }
+  #fridge-note { position: absolute; top: 12%; left: 30%; width: 28%; cursor: pointer; display: none; filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+  #note-img { max-width: 80%; max-height: 80%; object-fit: contain; }
+  #cake-place-candle-hot { top: 20%; left: 30%; width: 40%; height: 60%; }
+
+  #toast { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); z-index: 60; padding: 10px 18px; max-width: 80%; background: rgba(15,15,15,.92); color: #fde9c2; border: 1px solid #555; border-radius: 6px; font-size: .95rem; text-align: center; opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  #inv-toggle { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 50; width: 38px; height: 56px; background: rgba(20,20,20,.85); color: #fcd34d; border: 1px solid #555; border-radius: 0 6px 6px 0; cursor: pointer; font-size: 1.2rem; }
+  #inv { position: absolute; left: 0; top: 50%; transform: translate(-110%, -50%); z-index: 49; width: 88px; padding: 10px 8px; background: rgba(15,15,15,.92); border: 1px solid #44403c; border-left: 0; border-radius: 0 8px 8px 0; display: flex; flex-direction: column; gap: 6px; transition: transform .25s ease; backdrop-filter: blur(6px); }
+  #inv.open { transform: translate(0, -50%); }
+  #inv h2 { font-size: .55rem; letter-spacing: .2em; text-transform: uppercase; color: #a8a29e; margin: 0 0 4px; text-align: center; }
+  .slot { width: 64px; height: 64px; background: #1c1917; border: 2px solid #44403c; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; line-height: 1; cursor: pointer; overflow: hidden; }
+  .slot.selected { border-color: #fbbf24; background: rgba(251,191,36,.1); }
+  .slot img { max-width: 70%; max-height: 70%; object-fit: contain; display: block; }
+  #selected-label { position: absolute; left: 100px; top: 50%; transform: translateY(-50%); z-index: 49; color: #fcd34d; font-size: .75rem; background: rgba(20,20,20,.85); padding: 6px 10px; border-radius: 4px; border: 1px solid #555; pointer-events: none; max-width: 220px; }
+
+  #clock-time-hud { position: absolute; right: 12px; top: 12px; z-index: 50; color: #fde9c2; font: 700 1rem ui-monospace, monospace; background: rgba(0,0,0,.55); padding: 4px 10px; border-radius: 4px; border: 1px solid #444; cursor: pointer; transition: background .15s; -webkit-tap-highlight-color: transparent; }
+  #clock-time-hud.pressing { background: rgba(251,191,36,.25); border-color: #fbbf24; }
+  #restart-bar { position: absolute; right: 12px; top: 38px; z-index: 50; height: 3px; width: 0; background: #fbbf24; border-radius: 2px; transition: width .05s linear; }
+
+/* Finale Overlay CSS */
+#finale-overlay { 
+    position: absolute; inset: 0; z-index: 80; 
+    background: transparent; /* REMOVED the black background! */
+    display: none; pointer-events: none; /* Allows clicking through if needed */
+  }
+  #finale-overlay.active { display: block; }
+  
+  #finale-wrapper {
+    position: absolute;
+    /* Default centering */
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 60%; display: flex; justify-content: center; align-items: center;
+  }
+
+  #finale-media { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #finale-media.zoom { animation: finaleZoom var(--zoom-ms, 2000ms) ease-out forwards; }
+  @keyframes finaleZoom { from { transform: scale(1); opacity: 0; } to { transform: scale(1.5); opacity: 1; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scene-wrap">
+    <div id="scene">
+      <img class="bg" id="room-bg" src="assets/new-room.png" alt="" />
+      <div class="vignette"></div>
+
+      <button class="hotspot" id="clock-hot" aria-label="clock"></button>
+      <button class="hotspot" id="fridge-hot" aria-label="fridge"></button>
+      <button id="body-hot" aria-label="body"></button>
+
+      <img id="cigar-room" src="assets/cigar.png" alt="" />
+      <img id="girl" src="assets/girl.png" alt="" />
+      <img id="couple" src="assets/couple.png" alt="" />
+      <button id="girl-hot" aria-label="girl"></button>
+
+      <div id="table">
+        <img id="table-img" src="assets/table.png" alt="" />
+        <button id="cake-on-table-hot" aria-label="cake"></button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-clock">
+      <div id="digital-readout">11:15</div>
+      <div id="clock-stage">
+        <img id="clock-face" src="assets/clock-face.png" alt="" />
+        <div class="hand-wrap" id="hour-wrap"><img src="assets/hour-hand.png" alt="" /></div>
+        <div class="hand-wrap" id="minute-wrap"><img src="assets/minute-hand.png" alt="" /></div>
+      </div>
+      <button id="close-clock">← Back</button>
+    </div>
+
+    <div class="overlay" id="overlay-fridge">
+      <img class="fridge-img" id="fridge-img" src="assets/fridge-cake-unplugged.png" alt="" />
+      <button class="hotspot" id="fridge-cake-hot"></button>
+      <button class="hotspot" id="fridge-shelf-hot"></button>
+      <button class="hotspot" id="fridge-plug-hot"></button>
+      <img id="fridge-note" src="assets/note.png" alt="note" />
+      <button id="close-fridge">← Back</button>
+    </div>
+
+    <div class="overlay" id="overlay-cake">
+      <img class="cake-img" id="cake-img" src="assets/cake-top-empty.png" alt="" />
+      <button class="hotspot" id="cake-place-candle-hot"></button>
+      <button id="close-cake">← Back</button>
+    </div>
+
+    <div class="overlay" id="overlay-note">
+      <img id="note-img" src="assets/note.png" alt="note" />
+      <button id="close-note">← Back</button>
+    </div>
+
+    <button id="inv-toggle" aria-label="inventory">▶</button>
+    <aside id="inv">
+      <h2>Bag</h2>
+    </aside>
+    <div id="selected-label"></div>
+    <div id="clock-time-hud" title="Hold to restart">11:15</div>
+    <div id="restart-bar"></div>
+    <div id="toast"></div>
+
+    <!-- Finale Overlay HTML -->
+<!-- Finale Overlay HTML -->
+<div id="finale-overlay">
+  <div id="finale-wrapper">
+    <img id="finale-media" src="" alt="" />
+  </div>
+</div>
+  </div>
+</div>
+
+<script>
+const INITIAL_STATE = () => ({
+  overlay: null, inventory: [], selected: null,
+  timeMin: 11 * 60 + 15, pluggedIn: false, cake: "in_fridge",
+  knifeTaken: false, cigarTaken: false, candlesTaken: false,
+  candle1On: false, candle9On: false, cakeLit: false,
+  chilledMinutes: 0, isChilled: false, finale: false, bodyInspected: false
+});
+
+let state = INITIAL_STATE();
+const MAX_SLOTS = 6;
+const CHILL_TARGET = 30;
+
+// Finale Sequence array
+// Finale Sequence array
+const FINALE_SEQUENCE = [
+
+  // Immediate intro scream
+  { type: "sound", src: "assets/fahh.mp3" },
+
+  // Slight delay then looping sound
+  { type: "wait", ms: 250 },
+  { type: "sound", src: "assets/knee.mp3", loop: true },
+
+  // First gif alone
+  {
+    type: "gif",
+    src: "assets/bloop.gif",
+    ms: 1800,
+    css: {
+      top: "50%",
+      left: "50%",
+      width: "38%",
+      transform: "translate(-50%, -50%)"
+    }
+  },
+
+  // Brief pause before chaos
+  { type: "wait", ms: 300 },
+
+  // ALL CHAOTIC GIFS STACK TOGETHER
+  {
+    type: "chaos",
+    gifs: [
+      "assets/hbd.gif",
+      "assets/party.gif",
+      "assets/gay.gif",
+      "assets/skelly1.gif",
+      "assets/skelly2.gif",
+      "assets/skelly3.gif",
+      "assets/skelly4.gif"
+    ],
+    duration: 4500
+  },
+
+  // FLASHBANG 1
+{
+  type: "gif",
+  src: "assets/flashbang.gif",
+  ms: 700,
+  sound: "assets/planted.mp3",
+  fullscreen: true
+},
+
+// FLASHBANG 2
+{
+  type: "gif",
+  src: "assets/flashbang2.gif",
+  ms: 700,
+  sound: "assets/flashbang.mp3",
+  fullscreen: true,
+  stopKneww: true
+},
+
+// FLASHBANG 3
+{
+  type: "gif",
+  src: "assets/flashbang3.gif",
+  ms: 1200,
+  fullscreen: true
+},
+
+// FINAL MESSAGE
+{
+  type: "message",
+  text: "HAPPY BIRTHDAY<br>YOU ARE OLDER NOW 💀",
+  ms: 5000
+},
+
+  { type: "done" }
+];
+
+function triggerFinale() {
+  state.finale = true;
+  state.inventory = state.inventory.filter(i => i !== "knife");
+  state.selected = null;
+  render();
+  runFinaleSequence();
+}
+
+async function runFinaleSequence() {
+
+const overlay = $("finale-overlay");
+overlay.classList.add("active");
+
+const wrapper = $("finale-wrapper");
+const media = $("finale-media");
+
+let knewwAudio = null;
+
+for (const step of FINALE_SEQUENCE) {
+
+  // SOUND
+  if (step.type === "sound") {
+
+    const audio = new Audio(step.src);
+
+    if (step.loop) {
+      audio.loop = true;
+    }
+
+    audio.play().catch(() => {});
+
+    // Save looping kneww audio reference
+    if (step.src.includes("kneww")) {
+      knewwAudio = audio;
+    }
+  }
+
+  // WAIT
+  else if (step.type === "wait") {
+
+    await wait(step.ms || 500);
+  }
+
+  // CHAOS GIFS
+  else if (step.type === "chaos") {
+
+    const chaosElements = [];
+
+    for (const gif of step.gifs) {
+
+      const img = document.createElement("img");
+
+      img.src = gif;
+
+      img.style.position = "absolute";
+      img.style.pointerEvents = "none";
+
+      img.style.top = `${Math.random() * 90}%`;
+      img.style.left = `${Math.random() * 90}%`;
+
+      img.style.width = `${25 + Math.random() * 35}%`;
+
+      img.style.transform = `
+        translate(-50%, -50%)
+        rotate(${Math.random() * 40 - 20}deg)
+      `;
+
+      overlay.appendChild(img);
+
+      chaosElements.push(img);
+    }
+
+    await wait(step.duration || 4000);
+
+    chaosElements.forEach(el => el.remove());
+  }
+
+  // GIF / IMAGE
+  else if (step.type === "gif" || step.type === "image") {
+
+    media.src = step.src;
+
+    // Sound attached to gif
+    if (step.sound) {
+      const sfx = new Audio(step.sound);
+      sfx.play().catch(() => {});
+    }
+
+    // Stop kneww exactly at flashbang2
+    if (step.stopKneww && knewwAudio) {
+      knewwAudio.pause();
+      knewwAudio.currentTime = 0;
+    }
+
+    // FULLSCREEN FLASHBANGS
+    if (step.fullscreen) {
+
+      wrapper.style.top = "0";
+      wrapper.style.left = "0";
+      wrapper.style.width = "100vw";
+      wrapper.style.height = "100vh";
+      wrapper.style.transform = "none";
+
+      media.style.width = "100%";
+      media.style.height = "100%";
+      media.style.objectFit = "cover";
+    }
+
+    // NORMAL POSITIONING
+    else if (step.css) {
+
+      Object.assign(wrapper.style, step.css);
+
+      media.style.width = "100%";
+      media.style.height = "auto";
+      media.style.objectFit = "contain";
+    }
+
+    media.style.display = "block";
+
+    await wait(step.ms || 1000);
+  }
+
+  // FINAL MESSAGE
+  else if (step.type === "message") {
+
+    media.style.display = "none";
+
+    const msg = document.createElement("div");
+
+    msg.innerHTML = step.text;
+
+    msg.style.position = "absolute";
+    msg.style.inset = "0";
+
+    msg.style.display = "flex";
+    msg.style.alignItems = "center";
+    msg.style.justifyContent = "center";
+
+    msg.style.flexDirection = "column";
+
+    msg.style.fontSize = "5vw";
+    msg.style.fontWeight = "900";
+
+    msg.style.textAlign = "center";
+
+    msg.style.color = "white";
+
+    msg.style.textShadow = `
+      0 0 10px red,
+      0 0 20px yellow,
+      0 0 40px hotpink
+    `;
+
+    msg.style.animation = "birthdayShake 0.12s infinite";
+
+    overlay.appendChild(msg);
+
+    // Inject animation once
+    if (!document.getElementById("birthday-shake-style")) {
+
+      const style = document.createElement("style");
+
+      style.id = "birthday-shake-style";
+
+      style.innerHTML = `
+        @keyframes birthdayShake {
+          0%   { transform: translate(0px, 0px) rotate(0deg); }
+          25%  { transform: translate(-8px, 5px) rotate(-2deg); }
+          50%  { transform: translate(8px, -5px) rotate(2deg); }
+          75%  { transform: translate(-5px, -2px) rotate(-1deg); }
+          100% { transform: translate(0px, 0px) rotate(0deg); }
+        }
+      `;
+
+      document.head.appendChild(style);
+    }
+
+    await wait(step.ms || 4000);
+
+    msg.remove();
+  }
+
+  // DONE
+  else if (step.type === "done") {
+
+    media.style.display = "none";
+
+    overlay.classList.remove("active");
+
+    toast("Together, at last. 🎂");
+  }
+}
+}
+
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+// Preload Assets
+const ALL_ASSETS = [
+  "assets/new-room.png", "assets/room-knife-removed.png", "assets/final-room.png",
+  "assets/girl.png", "assets/couple.png",
+  "assets/fridge-cake-plugged.png", "assets/fridge-cake-unplugged.png",
+  "assets/fridge-empty-plugged.png", "assets/fridge-empty-unplugged.png",
+  "assets/table-fixed.png", "assets/empty-table-fixed.png",
+  "assets/table-cake-nocandle-fixed.png", "assets/table-with-cake-fixed.png",
+  "assets/cake-top-empty.png", "assets/cake-top-1.png",
+  "assets/cake-top-9.png", "assets/cake-top-19.png", "assets/cake-top-lit.png",
+  "assets/cigar.png", "assets/note.png",
+  "assets/clock-face.png", "assets/hour-hand.png", "assets/minute-hand.png",
+  "assets/bloop.gif", "assets/hbd.gif", "assets/party.gif", "assets/gay.gif",
+  "assets/skelly1.gif", "assets/skelly2.gif", "assets/skelly3.gif", "assets/skelly4.gif","assets/flashbang.gif",
+  "assets/flashbang2.gif","assets/flashbang3.gif"
+];
+
+const ALL_SOUNDS = [ "assets/fahh.mp3","assets/knee.mp3","assets/flashbang.mp3","assets/planted.mp3" ];
+
+function preloadImage(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = img.onerror = resolve;
+    img.src = src;
+  });
+}
+
+function preloadSound(src) {
+  return new Promise(resolve => {
+    const audio = new Audio();
+    audio.oncanplaythrough = audio.onerror = resolve;
+    audio.src = src;
+  });
+}
+
+const $ = id => document.getElementById(id);
+
+$("toast").textContent = "Loading...";
+$("toast").classList.add("show");
+
+Promise.all([
+  ...ALL_ASSETS.map(preloadImage),
+  ...ALL_SOUNDS.map(preloadSound),
+]).then(() => {
+  $("toast").classList.remove("show");
+  render();
+});
+
+function fmtTime(min) {
+  const h12 = Math.floor(min / 60) % 12 || 12;
+  const m = Math.floor(min % 60);
+  return `${String(h12).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+
+const ITEM_EMOJI = { cake:"🎂", candle1:"1️⃣", candle9:"9️⃣", knife:"🔪", cigar:"🚬" };
+function itemEmoji(item) { return ITEM_EMOJI[item] || ""; }
+
+let toastTimer = null;
+function toast(msg, ms = 2600) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), ms);
+}
+
+function tableSrc() {
+  if (state.cake === "on_table") {
+    if (state.candle1On && state.candle9On) return "assets/table-with-cake-fixed.png";
+    return "assets/table-cake-nocandle-fixed.png";
+  }
+  return state.candlesTaken ? "assets/empty-table-fixed.png" : "assets/table-fixed.png";
+}
+
+function cakeTopSrc() {
+  if (state.cakeLit) return "assets/cake-top-lit.png";
+  if (state.candle1On && state.candle9On) return "assets/cake-top-19.png";
+  if (state.candle1On) return "assets/cake-top-1.png";
+  if (state.candle9On) return "assets/cake-top-9.png";
+  return "assets/cake-top-empty.png";
+}
+
+function roomBgSrc() {
+  if (state.finale) return "assets/final-room.png";
+  if (state.knifeTaken) return "assets/room-knife-removed.png";
+  return "assets/new-room.png";
+}
+
+function renderSlots() {
+  const inv = $("inv");
+  inv.querySelectorAll(".slot").forEach(s => s.remove());
+  for (let i = 0; i < MAX_SLOTS; i++) {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.dataset.slot = i;
+    const item = state.inventory[i];
+    if (item) {
+      slot.classList.toggle("selected", state.selected === item);
+      slot.textContent = itemEmoji(item);
+      slot.onclick = () => {
+        state.selected = state.selected === item ? null : item;
+        render();
+      };
+    }
+    inv.appendChild(slot);
+  }
+}
+
+function render() {
+  $("room-bg").src = roomBgSrc();
+  $("table-img").src = tableSrc();
+  $("cake-on-table-hot").style.display = state.cake === "on_table" ? "block" : "none";
+
+  $("cigar-room").style.display = state.cigarTaken ? "none" : "block";
+  $("girl").style.display = state.finale ? "none" : "block";
+  $("couple").style.display = state.finale ? "block" : "none";
+  $("girl-hot").style.display = state.finale ? "none" : "block";
+  $("body-hot").style.display = state.finale ? "none" : "block";
+
+  ["overlay-clock","overlay-fridge","overlay-cake","overlay-note"].forEach(id =>
+    $(id).classList.remove("active"));
+  if (state.overlay === "clock")  $("overlay-clock").classList.add("active");
+  if (state.overlay === "fridge") $("overlay-fridge").classList.add("active");
+  if (state.overlay === "cake")   $("overlay-cake").classList.add("active");
+  if (state.overlay === "note")   $("overlay-note").classList.add("active");
+
+  $("digital-readout").textContent = fmtTime(state.timeMin);
+  $("clock-time-hud").textContent = fmtTime(state.timeMin);
+  const minuteAngle = ((state.timeMin % 60) / 60) * 360;
+  const hourAngle   = ((state.timeMin % 720) / 720) * 360;
+  $("minute-wrap").style.transform = `rotate(${minuteAngle}deg)`;
+  $("hour-wrap").style.transform   = `rotate(${hourAngle}deg)`;
+
+  const cakeIn = state.cake === "in_fridge";
+  $("fridge-img").src = cakeIn
+    ? (state.pluggedIn ? "assets/fridge-cake-plugged.png" : "assets/fridge-cake-unplugged.png")
+    : (state.pluggedIn ? "assets/fridge-empty-plugged.png" : "assets/fridge-empty-unplugged.png");
+  $("fridge-cake-hot").style.display  = cakeIn ? "block" : "none";
+  $("fridge-shelf-hot").style.display = state.cake === "in_inventory" ? "block" : "none";
+  $("fridge-note").style.display = "block";
+
+  $("cake-img").src = cakeTopSrc();
+
+  renderSlots();
+  $("selected-label").textContent = state.selected ? `Selected: ${itemEmoji(state.selected)}` : "";
+}
+
+function advanceChill(delta) {
+  if (state.isChilled) return;
+  if (state.pluggedIn && state.cake === "in_fridge" && delta > 0) {
+    state.chilledMinutes = Math.min(CHILL_TARGET, state.chilledMinutes + delta);
+    if (state.chilledMinutes >= CHILL_TARGET) state.isChilled = true;
+  }
+}
+
+function setTime(newMin) {
+  newMin = ((newMin % 720) + 720) % 720;
+  let delta = newMin - state.timeMin;
+  if (delta < 0) delta += 720;
+  state.timeMin = newMin;
+  advanceChill(delta);
+  render();
+}
+
+function resetChillIfNotDone() {
+  if (!state.isChilled && state.chilledMinutes > 0) {
+    state.chilledMinutes = 0;
+    return true;
+  }
+  return false;
+}
+
+function setupHandDrag(wrapId, kind) {
+  const wrap = $(wrapId);
+  const img = wrap.querySelector("img");
+  let dragging = false;
+  function down(e) { e.preventDefault(); dragging = true; img.setPointerCapture?.(e.pointerId); update(e); }
+  function move(e) { if (dragging) update(e); }
+  function up(e) { dragging = false; img.releasePointerCapture?.(e.pointerId); }
+  function update(e) {
+    const stage = $("clock-stage").getBoundingClientRect();
+    const cx = stage.left + stage.width / 2;
+    const cy = stage.top + stage.height / 2;
+    let angle = Math.atan2(e.clientX - cx, -(e.clientY - cy)) * 180 / Math.PI;
+    if (angle < 0) angle += 360;
+    if (kind === "minute") {
+      const newM = Math.round((angle / 360) * 60) % 60;
+      const cur = state.timeMin % 60;
+      let d = newM - cur;
+      if (d > 30) d -= 60; else if (d < -30) d += 60;
+      setTime(state.timeMin + d);
+    } else {
+      const newH = (angle / 360) * 12;
+      const cur = state.timeMin / 60;
+      let d = newH - cur;
+      if (d > 6) d -= 12; else if (d < -6) d += 12;
+      setTime(state.timeMin + d * 60);
+    }
+  }
+  img.addEventListener("pointerdown", down);
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+setupHandDrag("minute-wrap", "minute");
+setupHandDrag("hour-wrap", "hour");
+
+const RESTART_HOLD_MS = 1500;
+let restartTimer = null;
+let restartStart = null;
+let restartRAF = null;
+
+function restartBarTick() {
+  const elapsed = Date.now() - restartStart;
+  const pct = Math.min(1, elapsed / RESTART_HOLD_MS);
+  $("restart-bar").style.width = ($("clock-time-hud").offsetWidth * pct) + "px";
+  if (pct < 1) restartRAF = requestAnimationFrame(restartBarTick);
+}
+
+function beginRestart(e) {
+  e.stopPropagation();
+  restartStart = Date.now();
+  $("clock-time-hud").classList.add("pressing");
+  restartRAF = requestAnimationFrame(restartBarTick);
+  restartTimer = setTimeout(() => {
+    cancelAnimationFrame(restartRAF);
+    $("restart-bar").style.width = "0";
+    $("clock-time-hud").classList.remove("pressing");
+    state = INITIAL_STATE();
+    render();
+    toast("Game restarted. 🔄");
+  }, RESTART_HOLD_MS);
+}
+
+function cancelRestart() {
+  clearTimeout(restartTimer);
+  cancelAnimationFrame(restartRAF);
+  $("restart-bar").style.width = "0";
+  $("clock-time-hud").classList.remove("pressing");
+}
+
+$("clock-time-hud").addEventListener("pointerdown", beginRestart);
+window.addEventListener("pointerup", cancelRestart);
+// Pointermove removed from restart here to prevent accidental cancelations
+
+$("clock-hot").onclick = (e) => { e.stopPropagation(); state.overlay = "clock"; render(); };
+$("close-clock").onclick = () => { state.overlay = null; render(); };
+
+$("fridge-hot").onclick = (e) => { e.stopPropagation(); state.overlay = "fridge"; render(); };
+$("close-fridge").onclick = () => { state.overlay = null; render(); };
+
+$("fridge-cake-hot").onclick = () => {
+  if (state.cake !== "in_fridge") return;
+  const wasChilled = state.isChilled;
+  resetChillIfNotDone();
+  state.cake = "in_inventory";
+  if (!state.inventory.includes("cake")) state.inventory.push("cake");
+  render();
+  if (wasChilled) toast("Yumm, perfectly chilled. 🎂");
+  else toast("Hmm... it's not cold yet.");
+};
+
+$("fridge-shelf-hot").onclick = () => {
+  if (state.cake === "in_inventory" && state.selected === "cake") {
+    state.cake = "in_fridge";
+    state.inventory = state.inventory.filter(i => i !== "cake");
+    state.selected = null;
+    render();
+  }
+};
+
+$("fridge-plug-hot").onclick = () => {
+  state.pluggedIn = !state.pluggedIn;
+  if (!state.pluggedIn) resetChillIfNotDone();
+  toast(state.pluggedIn ? "Fridge plugged in. ⚡" : "Fridge unplugged. 🔌");
+  render();
+};
+
+$("fridge-note").onclick = (e) => { e.stopPropagation(); state.overlay = "note"; render(); };
+$("close-note").onclick = () => { state.overlay = "fridge"; render(); };
+
+$("table").onclick = (e) => {
+  if (state.cake === "on_table" && !state.isChilled) {
+    state.cake = "in_inventory";
+    if (!state.inventory.includes("cake")) state.inventory.push("cake");
+    toast("It's too warm. Picked it back up.");
+    render();
+    return;
+  }
+  if (state.cake === "in_inventory" && state.selected === "cake") {
+    state.cake = "on_table";
+    state.inventory = state.inventory.filter(i => i !== "cake");
+    state.selected = null;
+    render();
+    if (!state.isChilled) toast("It's still warm... maybe chill it first.");
+    return;
+  }
+  if (!state.candlesTaken) {
+    state.candlesTaken = true;
+    if (!state.inventory.includes("candle1")) state.inventory.push("candle1");
+    if (!state.inventory.includes("candle9")) state.inventory.push("candle9");
+    toast("Picked up the candles: 1 and 9.");
+    render();
+  }
+};
+
+$("cake-on-table-hot").onclick = (e) => {
+  e.stopPropagation();
+  if (state.cake !== "on_table") return;
+  if (state.selected === "knife") {
+    if (!state.cakeLit) { toast("It needs to be lit first."); return; }
+    toast("You can't cut it alone... maybe she'll help.");
+    return;
+  }
+  if (state.selected === "cigar") {
+    if (!(state.candle1On && state.candle9On)) { toast("Place both candles first."); return; }
+    state.cakeLit = true;
+    toast("The candles flicker to life. 🔥");
+    render();
+    return;
+  }
+  if (!state.isChilled) { 
+    state.cake = "in_inventory";
+    if (!state.inventory.includes("cake")) state.inventory.push("cake");
+    toast("It's too warm. Picked it back up."); 
+    render();
+    return; 
+  }
+  state.overlay = "cake";
+  render();
+};
+
+$("close-cake").onclick = () => { state.overlay = null; render(); };
+
+$("cake-place-candle-hot").onclick = (e) => {
+  e.stopPropagation();
+  if (state.selected === "candle1" && !state.candle1On) {
+    state.candle1On = true;
+    state.inventory = state.inventory.filter(i => i !== "candle1");
+    state.selected = null;
+  } else if (state.selected === "candle9" && !state.candle9On) {
+    state.candle9On = true;
+    state.inventory = state.inventory.filter(i => i !== "candle9");
+    state.selected = null;
+  } else {
+    toast("Select a candle (1 or 9) from your bag first.");
+    return;
+  }
+  render();
+};
+
+$("body-hot").onclick = () => {
+  if (state.knifeTaken) return;
+  if (!state.bodyInspected) {
+    state.bodyInspected = true;
+    toast("A man, slumped over... still clutching a cake knife.", 3200);
+    return;
+  }
+  state.knifeTaken = true;
+  if (!state.inventory.includes("knife")) state.inventory.push("knife");
+  toast("You took the knife. 🔪");
+  render();
+};
+
+$("cigar-room").onclick = (e) => {
+  e.stopPropagation();
+  if (state.cigarTaken) return;
+  state.cigarTaken = true;
+  if (!state.inventory.includes("cigar")) state.inventory.push("cigar");
+  toast("Picked up a cigar. 🚬");
+  render();
+};
+
+$("girl-hot").onclick = () => {
+  if (state.finale) return;
+  if (state.selected === "knife") {
+    if (!state.cakeLit) { toast("Light the cake first."); return; }
+    triggerFinale();
+    return;
+  }
+  if (state.cake !== "on_table") { toast("Where's the cake? We can't celebrate without it."); return; }
+  if (!state.candle1On || !state.candle9On) { toast("We still need to put the candles on..."); return; }
+  if (!state.cakeLit) { toast("It's not lit yet. Use something to light it."); return; }
+  if (state.selected !== "knife") { toast("Now we just need the knife to cut it."); return; }
+};
+
+const invEl = $("inv");
+const invToggle = $("inv-toggle");
+invToggle.onclick = () => {
+  const open = invEl.classList.toggle("open");
+  invToggle.textContent = open ? "◀" : "▶";
+};
+
+render();
+</script>
+</body>
+</html>
