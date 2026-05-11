@@ -257,7 +257,7 @@ const FINALE_SEQUENCE = [
 // FINAL MESSAGE
 {
   type: "message",
-  text: "HAPPY BIRTHDAY<br>YOU ARE OLDER NOW 💀",
+  text: "HAPPY BIRTHDAY ABG<br>YOU ARE OLDER NOW 💀",
   ms: 5000
 },
 
@@ -718,7 +718,7 @@ $("fridge-cake-hot").onclick = () => {
   state.cake = "in_inventory";
   if (!state.inventory.includes("cake")) state.inventory.push("cake");
   render();
-  if (wasChilled) toast("Yumm, perfectly chilled. 🎂");
+  if (wasChilled) toast("Yumm, perfectly chilled. 🎂 UNLIKE U U HORT");
   else toast("Hmm... it's not cold yet.");
 };
 
@@ -745,7 +745,7 @@ $("table").onclick = (e) => {
   if (state.cake === "on_table" && !state.isChilled) {
     state.cake = "in_inventory";
     if (!state.inventory.includes("cake")) state.inventory.push("cake");
-    toast("It's too warm. Picked it back up.");
+    toast("Madafaka!!! wanting to eat a NOT COLD CAKE. GO TO HELL");
     render();
     return;
   }
@@ -754,7 +754,7 @@ $("table").onclick = (e) => {
     state.inventory = state.inventory.filter(i => i !== "cake");
     state.selected = null;
     render();
-    if (!state.isChilled) toast("It's still warm... maybe chill it first.");
+    if (!state.isChilled) toast("STUPDI FUCK, the cakes gotta be cold");
     return;
   }
   if (!state.candlesTaken) {
@@ -770,12 +770,12 @@ $("cake-on-table-hot").onclick = (e) => {
   e.stopPropagation();
   if (state.cake !== "on_table") return;
   if (state.selected === "knife") {
-    if (!state.cakeLit) { toast("It needs to be lit first."); return; }
-    toast("You can't cut it alone... maybe she'll help.");
+    if (!state.cakeLit) { toast("Lit the candle fist cutie, the other guy is dead. u have to help urself"); return; }
+    toast("Look at you, celebrating ur bday without the ded guy");
     return;
   }
   if (state.selected === "cigar") {
-    if (!(state.candle1On && state.candle9On)) { toast("Place both candles first."); return; }
+    if (!(state.candle1On && state.candle9On)) { toast("CANDLE CANDLES CANDLES"); return; }
     state.cakeLit = true;
     toast("The candles flicker to life. 🔥");
     render();
@@ -784,7 +784,7 @@ $("cake-on-table-hot").onclick = (e) => {
   if (!state.isChilled) { 
     state.cake = "in_inventory";
     if (!state.inventory.includes("cake")) state.inventory.push("cake");
-    toast("It's too warm. Picked it back up."); 
+    toast("ABG CMON, PUT THE CAKE IN THE FRIDGE"); 
     render();
     return; 
   }
@@ -805,7 +805,7 @@ $("cake-place-candle-hot").onclick = (e) => {
     state.inventory = state.inventory.filter(i => i !== "candle9");
     state.selected = null;
   } else {
-    toast("Select a candle (1 or 9) from your bag first.");
+    toast("Put the  candles fih");
     return;
   }
   render();
@@ -815,12 +815,12 @@ $("body-hot").onclick = () => {
   if (state.knifeTaken) return;
   if (!state.bodyInspected) {
     state.bodyInspected = true;
-    toast("A man, slumped over... still clutching a cake knife.", 3200);
+    toast("A man, slumped over... still clutching a cake knife. I WONDER WHO KILLED HIM", 3200);
     return;
   }
   state.knifeTaken = true;
   if (!state.inventory.includes("knife")) state.inventory.push("knife");
-  toast("You took the knife. 🔪");
+  toast("You took the knife. 🔪 MURDERER 🫵😭");
   render();
 };
 
@@ -829,7 +829,7 @@ $("cigar-room").onclick = (e) => {
   if (state.cigarTaken) return;
   state.cigarTaken = true;
   if (!state.inventory.includes("cigar")) state.inventory.push("cigar");
-  toast("Picked up a cigar. 🚬");
+  toast("Picked up a cigar. 🚬 YOU SMOKE I DONT");
   render();
 };
 
@@ -840,9 +840,9 @@ $("girl-hot").onclick = () => {
     triggerFinale();
     return;
   }
-  if (state.cake !== "on_table") { toast("Where's the cake? We can't celebrate without it."); return; }
-  if (!state.candle1On || !state.candle9On) { toast("We still need to put the candles on..."); return; }
-  if (!state.cakeLit) { toast("It's not lit yet. Use something to light it."); return; }
+  if (state.cake !== "on_table") { toast("Where's the cake?  I KNOW. ITS ON UR BACK 🫦🤏"); return; }
+  if (!state.candle1On || !state.candle9On) { toast("We still need to put the candles on > SUS WDYM BY CANDLES"); return; }
+  if (!state.cakeLit) { toast("It's not lit yet. Use something to light it. MAYBE USE YOUR CHARM"); return; }
   if (state.selected !== "knife") { toast("Now we just need the knife to cut it."); return; }
 };
 
